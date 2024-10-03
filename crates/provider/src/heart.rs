@@ -7,16 +7,21 @@ use alloy_primitives::{TxHash, B256};
 use alloy_rpc_types_eth::Block;
 use alloy_transport::{utils::Spawnable, Transport, TransportErrorKind, TransportResult};
 use futures::{stream::StreamExt, FutureExt, Stream};
+#[cfg(not(target_arch = "wasm32"))]
+use std::time::{Duration, Instant};
 use std::{
     collections::{BTreeMap, HashMap, HashSet, VecDeque},
     fmt,
     future::Future,
-    time::{Duration, Instant},
 };
+#[cfg(target_arch = "wasm32")]
+use tokio::time::Duration;
 use tokio::{
     select,
     sync::{mpsc, oneshot, watch},
 };
+#[cfg(target_arch = "wasm32")]
+use wasmtimer::{std::Instant, tokio::sleep_until};
 
 /// A builder for configuring a pending transaction watcher.
 ///
@@ -627,7 +632,7 @@ impl<S: Stream<Item = Block> + Unpin + 'static> Heartbeat<S> {
         'shutdown: loop {
             {
                 let next_reap = self.next_reap();
-                let sleep = std::pin::pin!(tokio::time::sleep_until(next_reap.into()));
+                let sleep = std::pin::pin!(sleep_until(next_reap.into()));
 
                 // We bias the select so that we always handle new messages
                 // before checking blocks, and reap timeouts are last.

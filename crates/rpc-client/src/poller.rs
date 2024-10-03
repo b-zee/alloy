@@ -14,6 +14,11 @@ use tokio::sync::broadcast;
 use tokio_stream::wrappers::BroadcastStream;
 use tracing::Instrument;
 
+#[cfg(not(target_arch = "wasm32"))]
+use tokio::time::sleep;
+#[cfg(target_arch = "wasm32")]
+use wasmtimer::tokio::sleep;
+
 /// The number of retries for polling a request.
 const MAX_RETRIES: usize = 3;
 
@@ -191,7 +196,7 @@ where
                 }
 
                 trace!(duration=?self.poll_interval, "sleeping");
-                tokio::time::sleep(self.poll_interval).await;
+                sleep(self.poll_interval).await;
             }
         };
         fut.instrument(span).spawn_task();
